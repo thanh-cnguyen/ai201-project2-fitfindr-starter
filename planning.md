@@ -133,7 +133,9 @@ You must have at least 3 tools. The three required tools are listed — add any 
 
 **How does information from one tool get passed to the next?**
 <!-- Describe how your agent stores and accesses state within a session. What data is tracked? How is it passed between tool calls? -->
-* The agent maintains a session state that includes the user's query parameters, search results, selected item, wardrobe contents, and generated outfit description. After each tool call, the relevant information is stored in the session state and passed to the next tool as needed. For example, after `search_listings`, the selected item is stored in the session state and passed to `suggest_outfit`. After `suggest_outfit`, the generated outfit description is stored and passed to `create_fit_card`. The session state allows the agent to keep track of the user's preferences and the flow of information throughout the interaction, enabling it to provide a cohesive and personalized experience.
+* The agent uses a session dictionary as the shared state for one full interaction. It stores `query`, `parsed`, `search_results`, `selected_item`, `wardrobe`, `outfit_suggestion`, `fit_card`, and `error`.
+* After parsing the user query, the agent stores `description`, `size`, and `max_price` in `session["parsed"]`. After `search_listings`, the returned list is stored in `session["search_results"]`; if the list is empty, the agent sets `session["error"]` and returns early. If results exist, the first/top-ranked listing is stored in `session["selected_item"]` and passed into `suggest_outfit`.
+* The outfit string returned by `suggest_outfit` is stored in `session["outfit_suggestion"]`. That value, along with `session["selected_item"]`, is passed into `create_fit_card`. The final caption is stored in `session["fit_card"]`, and the completed session is returned.
 
 ---
 
@@ -163,14 +165,25 @@ For each tool, describe the specific failure mode you're handling and what the a
 flowchart TD
     A[User Query] --> B[Planning Loop]
     B --> C[Parse description, size, max_price]
-    C --> D[search_listings]
-    D -->|results found| E[Store search_results]
-    E --> F[Select top item]
+    C --> P[Store parsed query]
+    P --> S[(Session State)]
+    
+    S --> D[search_listings]
+    D --> |results found| E[Store search_results]
+    E --> S
+    
+    S --> F[Select top item]
     F --> G[Store selected_item]
-    G --> H[suggest_outfit]
-    H --> I[Store outfit_suggestion]
-    I --> J[create_fit_card]
-    J --> K[Return final fit card]
+    G --> S
+
+    S --> H[suggest_outfit]
+    H --> |outfit suggested| I[Store outfit_suggestion]
+    I --> S
+
+    S --> J[create_fit_card]
+    J --> |fit card created| K[Store fit_card]
+    K --> S
+    S --> R[Return final session / fit card]
 
     D -->|no results| L[Return helpful error and stop]
     H -->|empty wardrobe| M[Return general styling advice]
@@ -193,16 +206,23 @@ flowchart TD
      before trusting it" is a plan. -->
 
 **Milestone 3 — Individual tool implementations:**
-- *AI Tools:* Copilot for coding each tool, using the specific tool specs outlined above as input; ChatGPT for code review and testing guidance for each tool, using the tool specs and error handling sections as input.
-- *Provided Input:* For each tool, provide the relevant section from this planning.md that describes the tool's functionality, input parameters, return values, and failure modes. Also provide the agent diagram to show how the tool fits into the overall architecture.
-- *Expected Output:* Implemented functions for each tool that adhere to the specifications and handle the described failure modes.
-- *Verification:* Test each tool with a set of predefined inputs to ensure they return the expected outputs and handle errors correctly.
+* *AI Tools:* Copilot for coding each tool, using the specific tool specs outlined above as input; ChatGPT for code review and testing guidance for each tool, using the tool specs and error handling sections as input.
+* *Provided Input:* For each tool, provide the relevant section from this planning.md that describes the tool's functionality, input parameters, return values, and failure modes. Also provide the agent diagram to show how the tool fits into the overall architecture.
+* *Expected Output:* Implemented functions for each tool that adhere to the specifications and handle the described failure modes.
+* *Verification:* 
+     * Test `search_listings` with a normal query, a size-filtered query, and a no-results query.
+     * Test `suggest_outfit` with a populated wardrobe and with an empty wardrobe.
+     * Test `create_fit_card` with a complete outfit description and with missing outfit data.
 
 **Milestone 4 — Planning loop and state management:**
-- *AI Tools:* Copilot for coding the planning loop and state management, using the overall architecture and tool specifications as input; ChatGPT for code review and testing guidance for the planning loop, using the architecture, planning loop logic, state management, and error handling sections as input.
-- *Provided Input:* The overall architecture diagram and the tool specifications from this planning.md.
-- *Expected Output:* Implemented planning loop and state management that correctly orchestrates tool calls and handles state transitions.
-- *Verification:* Test the planning loop with a set of predefined user interactions to ensure it correctly calls tools, manages state, and handles errors.
+* *AI Tools:* Copilot for coding the planning loop and state management, using the overall architecture and tool specifications as input; ChatGPT for code review and testing guidance for the planning loop, using the architecture, planning loop logic, state management, and error handling sections as input.
+* *Provided Input:* The overall architecture diagram and the tool specifications from this planning.md.
+* *Expected Output:* Implemented planning loop and state management that correctly orchestrates tool calls and handles state transitions.
+* *Verification:* 
+     * Test a happy-path query and confirm all three tools are called in the correct order with the expected inputs and that the final output is correct.
+     * Test a no-results query and confirm that the loop exits after `search_listings` and that the user receives the appropriate error message.
+     * Test a query that results in an empty wardrobe and confirm that `suggest_outfit` returns general styling advice and that the user is informed about adding wardrobe items for better suggestions.
+     * Inspect the session state to confirm `selected_item` and `outfit_suggestion` are passed between tools without user re-entry.
 
 ---
 
@@ -214,76 +234,78 @@ Write out what a full user interaction looks like from start to finish — tool 
 
 **Step 1:**
 <!-- What does the agent do first? Which tool is called? With what input? -->
-Input: 
-     description = "vintage graphic tee"
-     size = None
-     max_price = 30.00
-
-Initialize Session:
-     {
-          "query": "I'm looking for a vintage graphic tee under $30. I mostly wear baggy jeans and chunky sneakers. What's out there and how would I style it?",
-          "parsed": {
-               "description": "vintage graphic tee",
-               "size": None,
-               "max_price": 30.00
-          },
-          "search_results": [],
-          "selected_item": None,
-          "wardrobe": {
-               "items": [
-                    {
-                         "id": "1",
-                         "name": "Baggy Jeans",
-                         "category": "bottoms",
-                         "colors": ["blue"],
-                         "style_tags": ["casual", "streetwear"],
-                         "notes": "Worn with chunky sneakers"
-                    },
-                    {
-                         "id": "2",
-                         "name": "Chunky Sneakers",
-                         "category": "shoes",
-                         "colors": ["white"],
-                         "style_tags": ["casual", "streetwear"],
-                         "notes": ""
-                    }
-               ]
-          },
-          "outfit_suggestion": None,
-          "fit_card": None,
-          "error": None
-     }
-
-Call `search_listings` with the parsed query parameters. The tool searches through the dataset of listings and returns items that match the description "vintage graphic tee" and are priced under $30.00.
-     Returns:
-          [
+* *Input:* 
+     * description = "vintage graphic tee"
+     * size = None
+     * max_price = 30.00
+* *Initialize Session:*
+```
+session = {
+     "query": "I'm looking for a vintage graphic tee under $30. I mostly wear baggy jeans and chunky sneakers. What's out there and how would I style it?",
+     "parsed": {
+          "description": "vintage graphic tee",
+          "size": None,
+          "max_price": 30.00
+     },
+     "search_results": [],
+     "selected_item": None,
+     "wardrobe": {
+          "items": [
                {
-                    "title": "Vintage Band Tee — Faded Grey",
-                    "description": "Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.",
-                    "category": "tops",
-                    "style_tags": ["vintage", "grunge", "band tee", "graphic tee", "streetwear"],
-                    "size": "L",
-                    "condition": "fair",
-                    "price": 19.00,
-                    "colors": ["grey", "charcoal"],
-                    "brand": null,
-                    "platform": "depop"
+                    "id": "1",
+                    "name": "Baggy Jeans",
+                    "category": "bottoms",
+                    "colors": ["blue"],
+                    "style_tags": ["casual", "streetwear"],
+                    "notes": "Worn with chunky sneakers"
                },
                {
-                    "title": "90s Cartoon Tee — Green",
-                    "description": "Bright green vintage tee featuring a classic '90s cartoon graphic. Soft cotton, crew neck, size M. Great condition with minimal signs of wear.",
-                    "category": "tops",
-                    "style_tags": ["vintage", "90s", "cartoon tee", "graphic tee", "streetwear"],
-                    "size": "M",
-                    "condition": "good",
-                    "price": 25.00,
-                    "colors": ["green"],
-                    "brand": null,
-                    "platform": "poshmark"
+                    "id": "2",
+                    "name": "Chunky Sneakers",
+                    "category": "shoes",
+                    "colors": ["white"],
+                    "style_tags": ["casual", "streetwear"],
+                    "notes": ""
                }
           ]
+     },
+     "outfit_suggestion": None,
+     "fit_card": None,
+     "error": None
+}
+```
+* Call `search_listings` with the parsed query parameters. The tool searches through the dataset of listings and returns items that match the description "vintage graphic tee" and are priced under $30.00.
+```python
+     [
+          {
+               "title": "Vintage Band Tee — Faded Grey",
+               "description": "Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.",
+               "category": "tops",
+               "style_tags": ["vintage", "grunge", "band tee", "graphic tee", "streetwear"],
+               "size": "L",
+               "condition": "fair",
+               "price": 19.00,
+               "colors": ["grey", "charcoal"],
+               "brand": None,
+               "platform": "depop"
+          },
+          {
+               "title": "90s Cartoon Tee — Green",
+               "description": "Bright green vintage tee featuring a classic '90s cartoon graphic. Soft cotton, crew neck, size M. Great condition with minimal signs of wear.",
+               "category": "tops",
+               "style_tags": ["vintage", "90s", "cartoon tee", "graphic tee", "streetwear"],
+               "size": "M",
+               "condition": "good",
+               "price": 25.00,
+               "colors": ["green"],
+               "brand": None,
+               "platform": "poshmark"
+          }
+     ]
+```
 
-State update:
+State updates:
+```python
      session["search_results"] = [
           {
                "title": "Vintage Band Tee — Faded Grey",
@@ -294,7 +316,7 @@ State update:
                "condition": "fair",
                "price": 19.00,
                "colors": ["grey", "charcoal"],
-               "brand": null,
+               "brand": None,
                "platform": "depop",
                "score": 2.5
           },
@@ -307,7 +329,7 @@ State update:
                "condition": "good",
                "price": 25.00,
                "colors": ["green"],
-               "brand": null,
+               "brand": None,
                "platform": "poshmark",
                "score": 2.0
           }
@@ -321,28 +343,33 @@ State update:
           "condition": "fair",
           "price": 19.00,
           "colors": ["grey", "charcoal"],
-          "brand": null,
+          "brand": None,
           "platform": "depop"
      }
+```
 
 **Step 2:**
 <!-- What happens next? What was returned from step 1? What tool is called now? -->
-Call `suggest_outfit` with the selected item (the vintage band tee) and the user's wardrobe (baggy jeans and chunky sneakers). The tool analyzes the new item and finds complementary pieces from the user's wardrobe to create a cohesive look.
-     Returns:
-          "Pair the faded grey vintage band tee with your baggy jeans and chunky sneakers for a casual, retro look. Consider adding a denim jacket for an extra layer of style!"
-
-State update:
+* Call `suggest_outfit` with the selected item (the vintage band tee) and the user's wardrobe (baggy jeans and chunky sneakers). The tool analyzes the new item and finds complementary pieces from the user's wardrobe to create a cohesive look.
+```python
+     "Pair the faded grey vintage band tee with your baggy jeans and chunky sneakers for a casual, retro look. Consider adding a denim jacket for an extra layer of style!"
+```
+* State update:
+```python
      session["outfit_suggestion"] = "Pair the faded grey vintage band tee with your baggy jeans and chunky sneakers for a casual, retro look. Consider adding a denim jacket for an extra layer of style!"
-
+```
 **Step 3:**
 <!-- Continue until the full interaction is complete -->
-Call `create_fit_card` with the outfit description and the new item. The tool generates a short, catchy caption that highlights the new item and how it can be styled with the user's existing wardrobe.
-     Returns:
-          "Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
-
-state update:
+* Call `create_fit_card` with the outfit description and the new item. The tool generates a short, catchy caption that highlights the new item and how it can be styled with the user's existing wardrobe.
+```python
+     "Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
+```
+* State update:
+```python
      session["fit_card"] = "Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
-
+```
 **Final output to user:**
 <!-- What does the user actually see at the end? -->
+```python
 "Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
+```
