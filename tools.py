@@ -13,6 +13,7 @@ Tools:
 """
 
 import os
+import re
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -60,17 +61,47 @@ def search_listings(
         id, title, description, category, style_tags (list), size,
         condition, price (float), colors (list), brand, platform
 
-    TODO:
-        1. Load all listings with load_listings().
-        2. Filter by max_price and size (if provided).
-        3. Score each remaining listing by keyword overlap with `description`.
-        4. Drop any listings with a score of 0 (no relevant matches).
-        5. Sort by score, highest first, and return the listing dicts.
-
-    Before writing code, fill in the Tool 1 section of planning.md.
+    Notes:
+        Relevance is based on keyword overlap between the query and the listing's
+        title, description, category, and style tags.
     """
-    # Replace this with your implementation
-    return []
+    listings = load_listings()
+
+    query_tokens = set(re.findall(r"[a-z0-9]+", (description or "").lower()))
+    normalized_size = size.strip().lower() if isinstance(size, str) else None
+
+    results: list[dict] = []
+
+    for listing in listings:
+        # Apply optional inclusive max price filter.
+        if max_price is not None and float(listing.get("price", 0)) > max_price:
+            continue
+
+        # Apply optional case-insensitive size substring filter.
+        listing_size = str(listing.get("size", "")).lower()
+        if normalized_size and normalized_size not in listing_size:
+            continue
+
+        searchable_text = " ".join(
+            [
+                str(listing.get("title", "")),
+                str(listing.get("description", "")),
+                str(listing.get("category", "")),
+                " ".join(str(tag) for tag in listing.get("style_tags", [])),
+            ]
+        ).lower()
+        listing_tokens = set(re.findall(r"[a-z0-9]+", searchable_text))
+
+        score = float(len(query_tokens & listing_tokens))
+        if score < 1:
+            continue
+
+        listing_with_score = dict(listing)
+        listing_with_score["score"] = score
+        results.append(listing_with_score)
+
+    results.sort(key=lambda item: item["score"], reverse=True)
+    return results
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
