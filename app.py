@@ -33,7 +33,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
             (listing_text, outfit_suggestion, fit_card)
         Each string maps to one of the three output panels in the UI.
 
-    TODO:
+    Notes:
         1. Guard against an empty query (return early with an error message).
         2. Select the wardrobe based on wardrobe_choice.
         3. Call run_agent() with the query and selected wardrobe.
@@ -43,8 +43,39 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
            string and return it along with session["outfit_suggestion"] and
            session["fit_card"].
     """
-    # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
+    if not user_query or not user_query.strip():
+        return "Please enter what you are looking for.", "", ""
+
+    wardrobe = get_example_wardrobe() if wardrobe_choice == "Example wardrobe" else get_empty_wardrobe()
+
+    session = run_agent(user_query.strip(), wardrobe)
+
+    if session["error"]:
+        return session["error"], "", ""
+
+    item = session["selected_item"]
+    if not item:
+        return "No item was selected. Please try modifying your search query.", "", ""
+
+    colors = ", ".join(item.get("colors", [])) if item.get("colors") else "N/A"
+    price = f"${item['price']:.2f}" if item.get("price") else "N/A"
+    listing_text = (
+        f"{item.get('title', 'N/A')}\n"
+        f"Price: {price}\n"
+        f"Size: {item.get('size', 'N/A')}\n"
+        f"Condition: {item.get('condition', 'N/A')}\n"
+        f"Category: {item.get('category', 'N/A')}\n"
+        f"Platform: {item.get('platform', 'N/A')}\n"
+        f"Colors: {colors}\n"
+        f"Brand: {item.get('brand', 'N/A')}\n"
+        f"Style tags: {', '.join(item.get('style_tags', [])) if item.get('style_tags') else 'N/A'}"
+    )
+
+    outfit_suggestion_text = session["outfit_suggestion"] or "No outfit suggestion available."
+
+    fit_card_text = session["fit_card"] or "No fit card available."
+
+    return listing_text, outfit_suggestion_text, fit_card_text   
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
