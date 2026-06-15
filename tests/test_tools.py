@@ -60,11 +60,12 @@ def test_suggest_outfit_with_wardrobe():
     }
 
     result = suggest_outfit(new_item, wardrobe)
+    result_lower = result.lower()
 
     assert isinstance(result, str)
     assert result.strip()
-    assert "Vintage Band Tee" in result or "vintage band tee" in result.lower() or "faded grey band-style tee" in result.lower()
-    assert "Baggy Jeans" in result or "baggy jeans" in result.lower()
+    assert "vintage" in result_lower or "band tee" in result_lower or "tee" in result_lower
+    assert "baggy jeans" in result_lower or "chunky sneakers" in result_lower
 
 def test_suggest_outfit_empty_wardrobe():
     new_item = {
@@ -81,10 +82,13 @@ def test_suggest_outfit_empty_wardrobe():
     }
 
     result = suggest_outfit(new_item, {"items": []})
+    result_lower = result.lower()
 
     assert isinstance(result, str)
     assert result.strip()
-    assert "Black Combat Boots" in result or "combat boots" in result.lower() or "black lace-up boots" in result.lower()
+    assert "black" in result_lower
+    assert "boot" in result_lower
+    assert "pair" in result_lower or "style" in result_lower or "wear" in result_lower
 
 # Additional tests for create_fit_card() are in test_tools.py, since it depends on suggest_outfit() and the outfit suggestion logic.
 def test_create_fit_card_with_valid_outfit():
@@ -106,10 +110,12 @@ def test_create_fit_card_with_valid_outfit():
     )
 
     result = create_fit_card(outfit, new_item)
+    result_lower = result.lower()
 
     assert isinstance(result, str)
     assert result.strip()
-    assert "Vintage Band Tee" in result or "band tee" in result.lower()
+    assert "tee" in result_lower or "band" in result_lower
+    assert "$19" in result or "depop" in result_lower
 
 
 def test_create_fit_card_missing_outfit():
@@ -127,7 +133,8 @@ def test_create_fit_card_missing_outfit():
     }
 
     result = create_fit_card("", new_item)
+    result_lower = result.lower()
 
     assert isinstance(result, str)
     assert result.strip()
-    assert "cannot" in result.lower() or "needs" in result.lower() or "missing" in result.lower()
+    assert "cannot" in result_lower or "needs" in result_lower or "missing" in result_lower

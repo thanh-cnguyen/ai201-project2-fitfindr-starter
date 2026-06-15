@@ -116,6 +116,7 @@ You must have at least 3 tools. The three required tools are listed — add any 
 
 **How does your agent decide which tool to call next?**
 <!-- Describe the logic your planning loop uses. What does it look at? What conditions change its behavior? How does it know when it's done? -->
+Before calling `search_listings`, the agent parses the natural language query using regular expressions. Regex is used instead of an LLM because the fields are predictable: price phrases like `under $30`, size phrases like `size M`, and the remaining text as the item description. This keeps parsing deterministic and easier to test.
 1. Call `search_listings` with the user's query parameters (description, size, max_price).
      1. If `search_listings` returns an empty list, break the loop and inform the user that no items were found, along with suggestions for modifying their search query.
      2. If `search_listings` returns results, the agent automatically selects the top-ranked result as the most relevant item. That item is stored in `session["selected_item"]` and passed directly into `suggest_outfit` as `new_item`.
