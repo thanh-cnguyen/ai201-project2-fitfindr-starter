@@ -241,13 +241,64 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     - Capture the outfit vibe in specific terms
     - Sound different each time for different inputs (use higher LLM temperature)
 
-    TODO:
-        1. Guard against an empty or whitespace-only outfit string.
-        2. Build a prompt that gives the LLM the item details and the outfit,
-           and asks for a caption matching the style guidelines above.
-        3. Call the LLM and return the response.
-
-    Before writing code, fill in the Tool 3 section of planning.md.
+    Notes:
+        The function first validates that an outfit description exists. If the
+        outfit is missing or blank, it returns a clear error message instead of
+        calling the LLM. For valid input, it asks the LLM to create a short
+        shareable caption and falls back to a deterministic caption if the LLM
+        call fails or returns empty content.
     """
-    # Replace this with your implementation
-    return ""
+    if not isinstance(outfit, str) or not outfit.strip():
+        return (
+            "Cannot create a fit card: missing outfit description. "
+            "Please provide a short outfit idea to generate a shareable caption."
+        )
+
+    title = new_item.get("title", "this thrifted piece")
+    description = new_item.get("description", "")
+    colors = ", ".join(new_item.get("colors") or []) or "mixed tones"
+    style_tags = ", ".join(new_item.get("style_tags") or []) or "everyday style"
+    price = new_item.get("price")
+    platform = str(new_item.get("platform") or "a resale app")
+
+    if isinstance(price, (int, float)):
+        price_text = f"${float(price):.2f}"
+    else:
+        price_text = "a great price"
+
+    prompt = (
+        "You are writing a short social media fit card caption.\n\n"
+        "Use these details:\n"
+        f"- Item title: {title}\n"
+        f"- Price: {price_text}\n"
+        f"- Platform: {platform}\n"
+        f"- Colors: {colors}\n"
+        f"- Style tags: {style_tags}\n"
+        f"- Item description: {description}\n"
+        f"- Outfit idea: {outfit.strip()}\n\n"
+        "Write exactly 2 to 4 sentences in a casual, authentic OOTD tone. "
+        "Naturally mention the thrifted item, include the outfit idea, and mention "
+        "the price and platform once each. Avoid hashtags and emojis."
+    )
+
+    fallback = (
+        f"Just thrifted {title} for {price_text} on {platform} and built a look around it: "
+        f"{outfit.strip()} "
+        f"The {colors} palette and {style_tags} vibe make it feel easy but styled."
+    )
+
+    try:
+        client = _get_groq_client()
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.95,
+            max_tokens=220,
+        )
+        content = response.choices[0].message.content
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+    except Exception:
+        pass
+
+    return fallback

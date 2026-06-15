@@ -1,4 +1,4 @@
-from tools import search_listings, suggest_outfit
+from tools import search_listings, suggest_outfit, create_fit_card
 
 def test_search_returns_results():
     results = search_listings("vintage graphic tee", size=None, max_price=50)
@@ -66,7 +66,6 @@ def test_suggest_outfit_with_wardrobe():
     assert "Vintage Band Tee" in result or "vintage band tee" in result.lower() or "faded grey band-style tee" in result.lower()
     assert "Baggy Jeans" in result or "baggy jeans" in result.lower()
 
-
 def test_suggest_outfit_empty_wardrobe():
     new_item = {
         "title": "Black Combat Boots",
@@ -86,3 +85,49 @@ def test_suggest_outfit_empty_wardrobe():
     assert isinstance(result, str)
     assert result.strip()
     assert "Black Combat Boots" in result or "combat boots" in result.lower() or "black lace-up boots" in result.lower()
+
+# Additional tests for create_fit_card() are in test_tools.py, since it depends on suggest_outfit() and the outfit suggestion logic.
+def test_create_fit_card_with_valid_outfit():
+    new_item = {
+        "title": "Vintage Band Tee — Faded Grey",
+        "description": "Faded grey band-style tee with distressed graphic.",
+        "category": "tops",
+        "style_tags": ["vintage", "grunge", "streetwear"],
+        "size": "L",
+        "condition": "fair",
+        "price": 19.00,
+        "colors": ["grey", "charcoal"],
+        "brand": None,
+        "platform": "depop",
+    }
+    outfit = (
+        "Pair the faded grey vintage band tee with baggy jeans and chunky sneakers "
+        "for a casual, retro streetwear look."
+    )
+
+    result = create_fit_card(outfit, new_item)
+
+    assert isinstance(result, str)
+    assert result.strip()
+    assert "Vintage Band Tee" in result or "band tee" in result.lower()
+
+
+def test_create_fit_card_missing_outfit():
+    new_item = {
+        "title": "Vintage Band Tee — Faded Grey",
+        "description": "Faded grey band-style tee with distressed graphic.",
+        "category": "tops",
+        "style_tags": ["vintage", "grunge", "streetwear"],
+        "size": "L",
+        "condition": "fair",
+        "price": 19.00,
+        "colors": ["grey", "charcoal"],
+        "brand": None,
+        "platform": "depop",
+    }
+
+    result = create_fit_card("", new_item)
+
+    assert isinstance(result, str)
+    assert result.strip()
+    assert "cannot" in result.lower() or "needs" in result.lower() or "missing" in result.lower()
