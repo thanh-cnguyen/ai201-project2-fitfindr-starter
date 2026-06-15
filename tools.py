@@ -120,19 +120,104 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
         If the wardrobe is empty, offer general styling advice for the item
         rather than raising an exception or returning an empty string.
 
-    TODO:
-        1. Check whether wardrobe['items'] is empty.
-        2. If empty: call the LLM with a prompt for general styling ideas
-           (what kinds of items pair well, what vibe it suits, etc.).
-        3. If not empty: format the wardrobe items into a prompt and ask
-           the LLM to suggest specific outfit combinations using the new item
-           and named pieces from the wardrobe.
-        4. Return the LLM's response as a string.
-
-    Before writing code, fill in the Tool 2 section of planning.md.
+    Notes:
+        If matching wardrobe pieces exist, the function asks the LLM to create
+        outfit ideas using those pieces. If no usable wardrobe pieces exist, it asks
+        for general styling advice based on the new item alone.
     """
-    # Replace this with your implementation
-    return ""
+
+    title = new_item.get("title", "the item")
+    category = new_item.get("category", "")
+    colors = ", ".join(new_item.get("colors") or []) or "unknown color"
+    style_tags = ", ".join(new_item.get("style_tags") or []) or "no specific style"
+    description = new_item.get("description", "")
+
+    # Determine which wardrobe categories complement this item's category.
+    complement_map: dict[str, list[str]] = {
+        "top": ["bottoms", "shoes", "outerwear", "accessories"],
+        "tops": ["bottoms", "shoes", "outerwear", "accessories"],
+        "bottom": ["tops", "shoes", "outerwear", "accessories"],
+        "bottoms": ["tops", "shoes", "outerwear", "accessories"],
+        "shoe": ["tops", "bottoms"],
+        "shoes": ["tops", "bottoms"],
+        "outerwear": ["tops", "bottoms", "shoes"],
+        "accessory": ["tops", "bottoms", "outerwear", "shoes"],
+        "accessories": ["tops", "bottoms", "outerwear", "shoes"],
+    }
+    complement_categories = complement_map.get(category.lower(), [])
+
+    wardrobe_items = wardrobe.get("items", []) or []
+
+    # Filter wardrobe to complementary categories only.
+    complementary = [
+        item for item in wardrobe_items
+        if item.get("category", "").lower() in complement_categories
+    ]
+
+    if not complementary:
+        # Empty wardrobe path: general styling advice only.
+        prompt = (
+            f"You are a thrift-store fashion stylist.\n\n"
+            f"A user is considering buying this thrifted item:\n"
+            f"- Title: {title}\n"
+            f"- Category: {category}\n"
+            f"- Colors: {colors}\n"
+            f"- Style: {style_tags}\n"
+            f"- Description: {description}\n\n"
+            f"Their wardrobe is empty. Give them 1–2 specific outfit ideas for this item using "
+            f"common wardrobe basics (e.g., white tee, black jeans, white sneakers). "
+            f"Be concrete and mention specific clothing types. Keep it to 3–5 sentences total. "
+            f"End with a brief tip about adding wardrobe items for more personalized suggestions."
+        )
+        fallback = (
+            f"Style {title} with simple basics that match its {colors} color palette "
+            f"and {style_tags} vibe. Since your wardrobe is empty, try adding a few "
+            f"tops, bottoms, shoes, and layering pieces for more personalized suggestions."
+        )
+    else:
+        # Format complementary wardrobe items for the prompt.
+        wardrobe_lines = "\n".join(
+            f"- {item.get('name', 'unnamed')} "
+            f"({item.get('category', '?')}, "
+            f"{', '.join(item.get('colors') or [])})"
+            + (f" — {item.get('notes')}" if item.get('notes') else "")
+            for item in complementary
+        )
+        prompt = (
+            f"You are a thrift-store fashion stylist.\n\n"
+            f"A user is considering buying this thrifted item:\n"
+            f"- Title: {title}\n"
+            f"- Category: {category}\n"
+            f"- Colors: {colors}\n"
+            f"- Style: {style_tags}\n"
+            f"- Description: {description}\n\n"
+            f"They already own these complementary pieces:\n{wardrobe_lines}\n\n"
+            f"Suggest 1–2 complete outfits that pair the new item with specific pieces from "
+            f"the list above. Use the exact names of the wardrobe items. Be specific about "
+            f"styling choices (tucked/untucked, layering, etc.). Keep it to 4–6 sentences."
+        )
+        fallback = (
+            f"Style {title} with simple basics that match its {colors} color palette "
+            f"and {style_tags} vibe. Try pairing it with balanced wardrobe staples like "
+            f"clean shoes, simple bottoms, and a layering piece for a complete outfit."
+        )
+
+    try:
+        client = _get_groq_client()
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=300,
+        )
+
+        content = response.choices[0].message.content
+        if content:
+            return content.strip()
+    except Exception:
+        pass
+
+    return fallback
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
