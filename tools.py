@@ -197,9 +197,10 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
             f"styling choices (tucked/untucked, layering, etc.). Keep it to 4–6 sentences."
         )
         fallback = (
-            f"Style {title} with simple basics that match its {colors} color palette "
-            f"and {style_tags} vibe. Try pairing it with balanced wardrobe staples like "
-            f"clean shoes, simple bottoms, and a layering piece for a complete outfit."
+            f"Style {title} with these wardrobe pieces that match its {colors} color palette"
+            f" and {style_tags} vibe: \n{wardrobe_lines}\n\n"
+            "Use these pieces as the base of the look and style"
+            " the thrifted item around them for a cohesive outfit."
         )
 
     try:
@@ -212,7 +213,7 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
         )
 
         content = response.choices[0].message.content
-        if content:
+        if isinstance(content, str) and content.strip():
             return content.strip()
     except Exception:
         pass
