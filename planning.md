@@ -58,7 +58,7 @@ You must have at least 3 tools. The three required tools are listed — add any 
 **Input parameters:**
 <!-- List each parameter, its type, and what it represents -->
 - `new_item` (dict): A dictionary representing the new clothing item, with fields such as `title`, `description`, `category`, `style_tags`, `size`, `condition`, `colors`, `price`, `brand`, and `platform`.
-- `wardrobe` (dict, optional): A dictionary representing the user's existing wardrobe, where the key is 'items' and a value is a list of dictionaries:
+- `wardrobe` (dict): A dictionary representing the user's existing wardrobe, where the key is 'items' and a value is a list of dictionaries:
      - With fields such as:
           - `id` (str): A unique identifier for the item.
           - `name` (str): The short description of the item.
@@ -362,14 +362,26 @@ State updates:
 <!-- Continue until the full interaction is complete -->
 * Call `create_fit_card` with the outfit description and the new item. The tool generates a short, catchy caption that highlights the new item and how it can be styled with the user's existing wardrobe.
 ```python
-     "Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
+     "Found this faded grey vintage band tee for $19 on Depop, and it’s giving easy retro streetwear. Pair it with baggy jeans and chunky sneakers for a relaxed, lived-in look that still feels intentional. Add a denim jacket if you want an extra layer."
 ```
 * State update:
 ```python
-     session["fit_card"] = "Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
+     session["fit_card"] = "Found this faded grey vintage band tee for $19 on Depop, and it’s giving easy retro streetwear. Pair it with baggy jeans and chunky sneakers for a relaxed, lived-in look that still feels intentional. Add a denim jacket if you want an extra layer."
 ```
 **Final output to user:**
 <!-- What does the user actually see at the end? -->
-```python
-"Here's a fit card for the faded grey vintage band tee: Pair it with your baggy jeans and chunky sneakers for a casual, retro look. Add a denim jacket for an extra layer of style!"
-```
+"""
+Top listing found:
+Vintage Band Tee — Faded Grey
+Price: $19.00
+Size: L
+Condition: Fair
+Platform: Depop
+Colors: Grey, Charcoal
+
+Outfit suggestion:
+Pair the faded grey vintage band tee with your baggy jeans and chunky sneakers for a casual, retro look. Consider adding a denim jacket for an extra layer of style!
+
+Your fit card:
+Found this faded grey vintage band tee for $19 on Depop, and it’s giving easy retro streetwear. Pair it with baggy jeans and chunky sneakers for a relaxed, lived-in look that still feels intentional. Add a denim jacket if you want an extra layer.
+"""
