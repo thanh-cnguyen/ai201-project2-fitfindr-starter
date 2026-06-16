@@ -1,4 +1,7 @@
 from tools import search_listings, suggest_outfit, create_fit_card
+from agent import run_agent
+from app import handle_query
+from utils.data_loader import get_example_wardrobe
 
 def test_search_returns_results():
     results = search_listings("vintage graphic tee", size=None, max_price=50)
@@ -138,3 +141,40 @@ def test_create_fit_card_missing_outfit():
     assert isinstance(result, str)
     assert result.strip()
     assert "cannot" in result_lower or "needs" in result_lower or "missing" in result_lower
+
+
+def test_run_agent_happy_path():
+    session = run_agent("vintage graphic tee under $30", get_example_wardrobe())
+
+    assert session["error"] is None
+    assert session["search_results"]
+    assert session["selected_item"] is not None
+    assert session["outfit_suggestion"]
+    assert session["fit_card"]
+
+def test_run_agent_no_results_stops_early():
+    session = run_agent("designer ballgown size XXS under $5", get_example_wardrobe())
+
+    assert session["error"]
+    assert session["search_results"] == []
+    assert session["selected_item"] is None
+    assert session["outfit_suggestion"] is None
+    assert session["fit_card"] is None
+
+
+def test_handle_query_empty_input():
+    listing, outfit, fit_card = handle_query("", "Example wardrobe")
+
+    assert "please enter" in listing.lower()
+    assert outfit == ""
+    assert fit_card == ""
+
+def test_handle_query_no_results():
+    listing, outfit, fit_card = handle_query(
+        "designer ballgown size XXS under $5",
+        "Example wardrobe",
+    )
+
+    assert "no listings" in listing.lower()
+    assert outfit == ""
+    assert fit_card == ""
