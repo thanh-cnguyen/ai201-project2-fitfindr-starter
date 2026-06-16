@@ -99,7 +99,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     size = None
     size_match = search(
-        r"\b(?:size|sz)\s*[:=]?\s*([a-z0-9/\-]+(?:\s+[a-z0-9/\-]+)*)",
+        r"\b(?:size|sz)\s*[:=]?\s*([a-z0-9/\-]+)",
         normalized_query,
     )
     if size_match:
@@ -124,7 +124,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         )
     if size is not None:
         description = sub(
-            r"(?:size|sz)\s*[:=]??\s*[a-z0-9/\-]+(?:\s+[a-z0-9/\-]+)*",
+            r"(?:size|sz)\s*[:=]?\s*[a-z0-9/\-]+(?:\s+[a-z0-9/\-]+)*",
             "",
             description,
             flags=IGNORECASE,

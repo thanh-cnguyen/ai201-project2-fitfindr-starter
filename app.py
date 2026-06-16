@@ -57,17 +57,17 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     if not item:
         return "No item was selected. Please try modifying your search query.", "", ""
 
-    colors = ", ".join(item.get("colors", [])) if item.get("colors") else "N/A"
-    price = f"${item['price']:.2f}" if item.get("price") else "N/A"
+    colors = ", ".join(item.get("colors", [])) if item.get("colors") is not None else "N/A"
+    price = f"${item['price']:.2f}" if item.get("price") is not None else "N/A"
     listing_text = (
-        f"{item.get('title', 'N/A')}\n"
+        f"{item.get('title') or 'N/A'}\n"
         f"Price: {price}\n"
-        f"Size: {item.get('size', 'N/A')}\n"
-        f"Condition: {item.get('condition', 'N/A')}\n"
-        f"Category: {item.get('category', 'N/A')}\n"
-        f"Platform: {item.get('platform', 'N/A')}\n"
+        f"Size: {item.get('size') or 'N/A'}\n"
+        f"Condition: {item.get('condition') or 'N/A'}\n"
+        f"Category: {item.get('category') or 'N/A'}\n"
+        f"Platform: {item.get('platform') or 'N/A'}\n"
         f"Colors: {colors}\n"
-        f"Brand: {item.get('brand', 'N/A')}\n"
+        f"Brand: {item.get('brand') or 'N/A'}\n"
         f"Style tags: {', '.join(item.get('style_tags', [])) if item.get('style_tags') else 'N/A'}"
     )
 
