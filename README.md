@@ -70,7 +70,7 @@ Inputs:
 Output:
 
 * A list of listing dictionaries sorted by relevance.
-* Each result includes listing fields such as `title`, `description`, `category`, `style_tags`, `size`, `condition`, `price`, `colors`, `brand`, `platform`, and a generated `score`.
+* Each result includes listing fields such as `title`, `description`, `category`, `style_tags`, `size`, `condition`, `price`, `colors`, `brand`, `platform`, and a hidden generated `score`.
 
 Failure behavior:
 
@@ -132,7 +132,9 @@ Regex parsing was used instead of an LLM because the needed fields are predictab
 
 After parsing, the agent calls `search_listings()`.
 
-If `search_listings()` returns no results, the agent stores an error message in `session["error"]` and stops early. It does not call `suggest_outfit()` or `create_fit_card()` without a selected item.
+If `search_listings()` returns no results, the agent checks if the user had included size or price filters. If so, it automatically retries the search with those filters removed to see if any results can be found. The agent stores a message in the session to inform the user about the retry and suggest loosening criteria for more options.
+
+If there are still no results after the retry (or if no filters were applied in the first place), the agent stops early and sets an error message in the session. It does not call `suggest_outfit()` or `create_fit_card()` without a selected item.
 
 If listings are found, the agent stores the results in `session["search_results"]`, selects the top-ranked listing, and stores it in `session["selected_item"]`.
 
@@ -158,6 +160,8 @@ Session keys:
     "outfit_suggestion": output from suggest_outfit,
     "fit_card": output from create_fit_card,
     "error": error message if the workflow stops early,
+    "retry_message": message about retrying search with loosened criteria,
+    "retry_attempted": flag to track if we have already retried the search,
 }
 ```
 
@@ -175,7 +179,7 @@ This allows the agent to reuse tool outputs without asking the user to re-enter 
 
 | Tool              | Failure mode                                          | Agent response                                                                                                       |
 | ----------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `search_listings` | No listings match the query                           | The agent stops early and tells the user to try broader keywords, remove the size filter, or increase the max price. |
+| `search_listings` | No listings match the original query | If the original query had size or price filters, the agent retries once with those filters removed. If the retry finds results, the agent continues with the top broadened result and shows a retry message. If the retry also finds no results, the agent stops early and suggests broader keywords, removing filters, or increasing the budget. |
 | `suggest_outfit`  | Wardrobe is empty or no complementary items are found | The tool returns general styling advice using common basics.                                                         |
 | `suggest_outfit`  | LLM call fails or returns empty content               | The tool returns a fallback outfit suggestion.                                                                       |
 | `create_fit_card` | Outfit input is missing or blank                      | The tool returns a clear error message saying a fit card cannot be created without an outfit description.            |
@@ -278,6 +282,8 @@ The tests cover:
 * `suggest_outfit()` with an empty wardrobe
 * `create_fit_card()` with a valid outfit
 * `create_fit_card()` with a missing outfit
+* agent retry logic when strict size/price filters yield no results
+* retry failure when loosened search also yields no results
 
 Manual failure-mode checks were also run from the terminal:
 
@@ -300,3 +306,7 @@ I used GitHub Copilot to help draft implementation code for the tool functions a
 One way the spec helped was by forcing the agent to be separated into three clear tools. This made the project easier to implement and test because search, outfit suggestion, and fit card generation could each be developed independently before being connected in the agent loop.
 
 One way my implementation diverged from the starter example is that my agent automatically selects the top-ranked listing instead of asking the user to choose from multiple results. I made this choice because it keeps the demo end-to-end, avoids requiring another user input step, and clearly shows state passing from `search_listings()` to `suggest_outfit()` to `create_fit_card()`.
+
+## Stretch Feature: Retry Logic with Fallback
+
+If the first listing search returns no results and the user included a size or price filter, the agent retries once with those filters removed while keeping the same description. If the retry finds matches, the app continues with the top broadened result and displays a message explaining that the search was loosened. If the retry still finds no matches, the agent stops before outfit generation.

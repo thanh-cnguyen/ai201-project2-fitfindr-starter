@@ -43,6 +43,8 @@ def _new_session(query: str, wardrobe: dict) -> dict:
         "outfit_suggestion": None,   # string returned by suggest_outfit
         "fit_card": None,            # string returned by create_fit_card
         "error": None,               # set if the interaction ended early
+        "retry_message": None,       # set if we had to retry the search with loosened criteria
+        "retry_attempted": False,    # flag to track if we've already retried the search
     }
 
 
@@ -149,6 +151,13 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     results = search_listings(description, size, max_price)
     session["search_results"] = results
+
+    if not results and (size is not None or max_price is not None):
+        session["retry_attempted"] = True
+        results = search_listings(description, None, None)
+        if results:
+            session["search_results"] = results
+            session["retry_message"] = "No results with original criteria, but loosened search found matches."
 
     if not results:
         session["error"] = (

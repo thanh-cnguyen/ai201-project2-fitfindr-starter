@@ -120,7 +120,6 @@ def test_create_fit_card_with_valid_outfit():
     assert "tee" in result_lower or "band" in result_lower
     assert "$19" in result or "depop" in result_lower
 
-
 def test_create_fit_card_missing_outfit():
     new_item = {
         "title": "Vintage Band Tee — Faded Grey",
@@ -142,7 +141,7 @@ def test_create_fit_card_missing_outfit():
     assert result.strip()
     assert "cannot" in result_lower or "needs" in result_lower or "missing" in result_lower
 
-
+# Tests for run_agent() and handle_query() are in test_tools.py, since they depend on the full flow of search_listings(), suggest_outfit(), and create_fit_card() working together.
 def test_run_agent_happy_path():
     session = run_agent("vintage graphic tee under $30", get_example_wardrobe())
 
@@ -178,3 +177,29 @@ def test_handle_query_no_results():
     assert "no listings" in listing.lower()
     assert outfit == ""
     assert fit_card == ""
+
+def test_run_agent_retries_with_loosened_filters():
+    session = run_agent(
+        "vintage graphic tee size XXS under $5",
+        get_example_wardrobe(),
+    )
+
+    assert session["error"] is None
+    assert session["retry_attempted"] is True
+    assert session["retry_message"]
+    assert session["search_results"]
+    assert session["selected_item"] is not None
+    assert session["outfit_suggestion"]
+    assert session["fit_card"]
+
+def test_run_agent_retry_still_no_results():
+    session = run_agent(
+        "designer ballgown size XXS under $5",
+        get_example_wardrobe(),
+    )
+
+    assert session["error"]
+    assert session["retry_attempted"] is True
+    assert session["selected_item"] is None
+    assert session["outfit_suggestion"] is None
+    assert session["fit_card"] is None
