@@ -65,10 +65,21 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         output fields (outfit_suggestion, fit_card) will be None.
 
     Notes:
-        The agent follows the planning loop from planning.md. It stops early if
-        search_listings returns no results. Otherwise, it selects the top result,
-        stores it in session state, passes it to suggest_outfit, then passes the
-        outfit suggestion to create_fit_card.
+        Step 1: Initialize the session with _new_session().
+
+        Step 2: Parse the user's query to extract a description, size, and
+                max_price. You can use regex, string splitting, or ask the LLM
+                to parse it — document your choice in planning.md.
+                Store the result in session["parsed"].
+
+        Step 3: Call search_listings() with the parsed parameters.
+                Store results in session["search_results"].
+                If no results: set session["error"] to a helpful message and
+                return the session early. Do NOT proceed to suggest_outfit
+                with empty input.
+
+        Step 4: Select the item to use (e.g., the top result).
+                Store it in session["selected_item"].
     """
     session = _new_session(query, wardrobe)
 

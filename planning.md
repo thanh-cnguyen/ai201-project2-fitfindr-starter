@@ -376,11 +376,13 @@ Top listing found:
 Vintage Band Tee — Faded Grey
 Price: $19.00
 Size: L
-Condition: Fair
-Platform: Depop
-Colors: Grey, Charcoal
+Colors: grey, charcoal
+Condition: fair
+Platform: depop
+Brand: N/A
+Style tags: vintage, grunge, band tee, graphic tee, streetwear
 
-Outfit suggestion:
+Outfit idea:
 Pair the faded grey vintage band tee with your baggy jeans and chunky sneakers for a casual, retro look. Consider adding a denim jacket for an extra layer of style!
 
 Your fit card:

@@ -62,8 +62,11 @@ def search_listings(
         condition, price (float), colors (list), brand, platform
 
     Notes:
-        Relevance is based on keyword overlap between the query and the listing's
-        title, description, category, and style tags.
+        1. Load all listings with load_listings().
+        2. Filter by max_price and size (if provided).
+        3. Score each remaining listing by keyword overlap with `description`.
+        4. Drop any listings with a score of 0 (no relevant matches).
+        5. Sort by score, highest first, and return the listing dicts.
     """
     listings = load_listings()
 
@@ -121,9 +124,13 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
         rather than raising an exception or returning an empty string.
 
     Notes:
-        If matching wardrobe pieces exist, the function asks the LLM to create
-        outfit ideas using those pieces. If no usable wardrobe pieces exist, it asks
-        for general styling advice based on the new item alone.
+        1. Check whether wardrobe['items'] is empty.
+        2. If empty: call the LLM with a prompt for general styling ideas
+           (what kinds of items pair well, what vibe it suits, etc.).
+        3. If not empty: format the wardrobe items into a prompt and ask
+           the LLM to suggest specific outfit combinations using the new item
+           and named pieces from the wardrobe.
+        4. Return the LLM's response as a string.
     """
 
     title = new_item.get("title", "the item")
@@ -243,11 +250,10 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     - Sound different each time for different inputs (use higher LLM temperature)
 
     Notes:
-        The function first validates that an outfit description exists. If the
-        outfit is missing or blank, it returns a clear error message instead of
-        calling the LLM. For valid input, it asks the LLM to create a short
-        shareable caption and falls back to a deterministic caption if the LLM
-        call fails or returns empty content.
+        1. Guard against an empty or whitespace-only outfit string.
+        2. Build a prompt that gives the LLM the item details and the outfit,
+           and asks for a caption matching the style guidelines above.
+        3. Call the LLM and return the response.
     """
     if not isinstance(outfit, str) or not outfit.strip():
         return (

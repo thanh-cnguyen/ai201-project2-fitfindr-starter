@@ -50,10 +50,10 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
 
     session = run_agent(user_query.strip(), wardrobe)
 
-    if session["error"]:
-        return session["error"], "", ""
+    if session.get("error"):
+        return session.get("error", "An error occurred."), "", ""
 
-    item = session["selected_item"]
+    item = session.get("selected_item")
     if not item:
         return "No item was selected. Please try modifying your search query.", "", ""
 
@@ -71,11 +71,11 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
         f"Style tags: {', '.join(item.get('style_tags', [])) if item.get('style_tags') else 'N/A'}"
     )
 
-    outfit_suggestion_text = session["outfit_suggestion"] or "No outfit suggestion available."
+    outfit_suggestion_text = session.get("outfit_suggestion") or "No outfit suggestion available."
 
-    fit_card_text = session["fit_card"] or "No fit card available."
+    fit_card_text = session.get("fit_card") or "No fit card available."
 
-    return listing_text, outfit_suggestion_text, fit_card_text   
+    return listing_text, outfit_suggestion_text, fit_card_text
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
