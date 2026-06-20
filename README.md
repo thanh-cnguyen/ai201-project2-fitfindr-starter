@@ -310,3 +310,7 @@ One way my implementation diverged from the starter example is that my agent aut
 ## Stretch Feature: Retry Logic with Fallback
 
 If the first listing search returns no results and the user included a size or price filter, the agent retries once with those filters removed while keeping the same description. If the retry finds matches, the app continues with the top broadened result and displays a message explaining that the search was loosened. If the retry still finds no matches, the agent stops before outfit generation.
+
+## License
+
+No license is currently granted. This repository is shared publicly for portfolio and review purposes only.
